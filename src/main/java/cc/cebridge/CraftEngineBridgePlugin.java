@@ -4,7 +4,6 @@ import cc.cebridge.carrier.CarrierManager;
 import cc.cebridge.command.BridgeCommand;
 import cc.cebridge.listener.CEBlockListener;
 import cc.cebridge.listener.WorldListener;
-import cc.cebridge.patch.DroppedItemPatcher;
 import cc.cebridge.recipe.LeavesXRecipeBridge;
 import org.bukkit.command.PluginCommand;
 import org.bukkit.plugin.java.JavaPlugin;
@@ -48,9 +47,6 @@ public final class CraftEngineBridgePlugin extends JavaPlugin {
         getServer().getPluginManager().registerEvents(new CEBlockListener(this), this);
         getServer().getPluginManager().registerEvents(new WorldListener(this), this);
         getServer().getPluginManager().registerEvents(recipeBridge, this);
-        if (settings.patchDroppedItems()) {
-            getServer().getPluginManager().registerEvents(new DroppedItemPatcher(this), this);
-        }
 
         PluginCommand command = getCommand("cebridge");
         if (command != null) {

@@ -8,6 +8,8 @@
 
 ## 功能
 
+客户端显示与识别功能由配套模组处理。插件负责导出和同步服务端内容，不再监听掉落物生成事件或修补掉落物名称；旧配置中的 `patch-dropped-items` 已不再生效。
+
 ### 客户端物品与方块
 
 - 同步 CraftEngine 的物品、分类与方块状态，为客户端提供真实的自定义内容身份。
@@ -103,7 +105,6 @@ Paper’s Delight 免费版与付费版的适配取决于其具体 API / 二进�
 | `client-mod.enabled` | 启用可选客户端桥接通信 |
 | `settings.leavesx-recipe-sync` | 启用可用的 LeavesX 配方重载联动 |
 | `settings.auto-name` | 对缺少名称的内容提供 ID 名称兜底 |
-| `settings.patch-dropped-items` | 对缺少名称的 CE 掉落物补充名称 |
 | `display-names` | 按 CE ID 覆盖 MiniMessage 名称 |
 | `jade-display-items` | 覆盖方块对应的展示物品，例如作物产物 |
 

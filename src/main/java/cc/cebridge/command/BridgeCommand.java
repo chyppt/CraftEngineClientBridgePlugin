@@ -107,7 +107,6 @@ public final class BridgeCommand implements CommandExecutor, TabCompleter {
                 sender.sendRichMessage("<gray>已索引 CE 方块: <white>" + plugin.registry().blockCount());
                 sender.sendRichMessage("<gray>载体: <white>" + plugin.settings().carriers()
                         + " <gray>| 自动命名: <white>" + plugin.settings().autoName()
-                        + " <gray>| 掉落物修补: <white>" + plugin.settings().patchDroppedItems()
                         + " <gray>| LeavesX 配方重载联动: <white>" + plugin.settings().leavesXRecipeSync());
                 sender.sendRichMessage("<gray>子命令: <white>reload, info, status, recipes, rescan [半径], purge [半径], refresh [半径]");
             }

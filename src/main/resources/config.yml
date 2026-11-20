@@ -13,8 +13,6 @@ settings:
   # 载体渲染缩放（保持极小值，肉眼不可见）
   carrier-scale: 0.001
 
-  # 掉落物修补：CE 自定义物品若未配置 item_name，落地时自动补显示名
-  patch-dropped-items: true
 
   # 载体/掉落物缺少名字时，是否按 ID 自动美化命名（如 ruby_ore -> Ruby Ore）
   auto-name: true
