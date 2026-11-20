@@ -39,11 +39,10 @@ public final class LeavesXRecipeBridge implements Listener {
         if (!plugin.isEnabled()) return;
         if (rebuildItems) rebuildRegistry.set(true);
         if (!queued.compareAndSet(false, true)) return;
-        plugin.getServer().getGlobalRegionScheduler().runDelayed(plugin, task -> {
+        cc.cebridge.compat.Schedulers.global().runDelayed(plugin, task -> {
             queued.set(false);
             if (rebuildRegistry.getAndSet(false)) {
                 plugin.registry().rebuild();
-                plugin.carriers().invalidateViewedBlocks();
             }
             if (!plugin.settings().leavesXRecipeSync()) { spi.unregister(); return; }
             if (spi.registered() || spi.discoverAndRegister()) {

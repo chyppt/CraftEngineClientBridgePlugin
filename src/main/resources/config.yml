@@ -1,43 +1,14 @@
-# ------------------------------------------------------------
-#  CraftEngineClientBridge 配置
-#  提供 Jade 载体维护与 LeavesX 26.1.2 配方重载联动。
-#  配方同步由核心负责；不会向客户端注册新的物品目录或变体规则。
-#
-#  Jade 载体为按需创建的非持久化 ItemDisplay，最后一名观察者离开后回收。
-# ------------------------------------------------------------
-
+# CraftEngineClientBridge：服务端只负责内容索引和协议同步，客户端展示由配套模组负责。
 settings:
-  # 是否为 CE 自定义方块生成隐形展示载体
-  carriers: true
-
-  # 载体渲染缩放（保持极小值，肉眼不可见）
-  carrier-scale: 0.001
-
-
-  # 载体/掉落物缺少名字时，是否按 ID 自动美化命名（如 ruby_ore -> Ruby Ore）
   auto-name: true
-
-  # CE 重载后通知 LeavesX 已启用的 REI/JEI 协议重新同步配方。
-  # 不会自动修改核心开关，也不提供客户端物品侧栏目录。
+  # 有对应核心接口时通知配方刷新，不修改核心配置。
   leavesx-recipe-sync: true
 
-  # 旧版本兼容项：1.1.6 不再逐块扫描，当前版本不使用此预算。
-  scan-budget-per-tick: 65536
+display-names: {}
 
-# 显示名兜底表（支持 MiniMessage 语法）。
-# 键为 CE 物品或方块 ID，命中后优先级最高。
-# 注意：带冒号的键需要加引号！
-display-names:
-  # "craftengine:ruby_ore": "<red>红宝石矿石</red>"
-  # "craftengine:steel_block": "<!italic><gradient:#7f8c9b:#cfd8e3>钢块</gradient>"
-
-# Jade 作物展示物品覆盖：优先于自动解析的 CE 掉落物品；不改变种植、掉落或配方。
-# 1.1.7 自动从已加载的掉落定义选择首个非种子产物，无需手工补全全部作物。
-# 多产物作物显示一个代表物品，不宣称它是本次实际收获结果。
 jade-display-items:
   "farmersdelight:cabbages": "farmersdelight:cabbage"
   "farmersdelight:tomatoes": "farmersdelight:tomato"
 
-# 可选 Fabric 客户端：未安装的玩家不接收此目录，普通 Paper/Folia 同样可用。
 client-mod:
   enabled: true

@@ -48,15 +48,15 @@ Paper’s Delight 免费版与付费版的适配取决于其具体 API / 二进�
 
 | 组件 | 要求 |
 | --- | --- |
-| 服务端 | 当前源码面向 Paper 26.1.2 API；可用于匹配版本的 LeavesX 等 Paper 分支 |
-| Java | JDK / JRE 25 |
-| CraftEngine | 必需；当前编译依赖为 26.9.1 |
+| 服务端 | Paper / Folia 1.20+；LeavesX 为可选增强，CE 本身也须支持对应版本 |
+| Java | 插件字节码为 Java 17；运行 Java 版本以服务端和 CE 的要求为准 |
+| CraftEngine | 必需；最低编译基线 26.7（官方 Maven 对 26.7.0 的版本名） |
 | 客户端桥接模组 | 完整功能需要安装与 Minecraft、加载器和协议匹配的版本 |
 | Jade / WTHIT | 按需安装，用于方块信息展示 |
 | JEI / REI | 按需安装，用于物品与配方浏览 |
 | PapersDelight | 可选，用于砧板与厨锅配方 |
 
-插件使用区域和实体调度并声明 Folia 支持。当前仓库编译目标不代表已经验证所有 Minecraft、CE、加载器或 Folia 组合；客户端兼容版本以对应客户端构建为准。
+插件在 Folia 使用区域和实体调度，在普通 Paper 使用 Bukkit 调度；拒绝读取跨区域或未加载区块。当前仓库编译目标不代表已经验证所有 Minecraft、CE、加载器或 Folia 组合；客户端兼容版本以对应客户端构建为准。
 
 ## 安装
 
@@ -133,7 +133,7 @@ jade-display-items:
 
 ## 构建
 
-需要 JDK 25。Windows PowerShell：
+构建工具链需要 JDK 25，默认针对 Paper 1.20 / CE 26.7 编译并生成 Java 17 字节码。Windows PowerShell：
 
 ```powershell
 .\gradlew.bat clean build --no-daemon
@@ -148,6 +148,8 @@ bash ./gradlew clean build --no-daemon
 产物：`build/libs/CraftEngineClientBridge-1.0.0.jar`。
 
 依赖通过 Maven 仓库解析；构建不引用开发者的本地客户端目录。插件需要的共享协议代码位于 `cc.cebridge.wire`。
+
+多版本编译记录和运行验证边界见 [兼容性记录](docs/compatibility.md)。
 
 ## 测试范围
 

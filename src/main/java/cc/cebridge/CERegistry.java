@@ -1,7 +1,6 @@
 package cc.cebridge;
 
 import cc.cebridge.util.Names;
-import io.papermc.paper.datacomponent.DataComponentTypes;
 import net.kyori.adventure.text.Component;
 import net.kyori.adventure.text.minimessage.MiniMessage;
 import net.momirealms.craftengine.bukkit.api.CraftEngineItems;
@@ -22,7 +21,7 @@ import java.util.Map;
 /**
  * 与 CraftEngine 的桥接层：
  * 1. 启动/重载时扫描全部 CE 物品，建立 方块ID -> 物品定义 反查表；
- * 2. 构建 Jade 载体物品（保留 CE 的 item_model，必要时补 item_name 和 Jade marker）。
+ * 2. 为客户端目录构建展示图标，保留 CE 物品模型。
  */
 public final class CERegistry {
 
@@ -30,9 +29,8 @@ public final class CERegistry {
     private volatile Map<Key, BukkitItemDefinition> blockToItem = Map.of();
     private volatile Map<Key, Key> cropDisplayItems = Map.of();
     // 仅缓存模板，对外始终 clone，避免不同实体共享可变 ItemStack。
-    private final Map<Key, ItemStack> carrierTemplates = new HashMap<>();
+    private final Map<Key, ItemStack> iconTemplates = new HashMap<>();
     private final Map<Key, ItemStack> cropTemplates = new HashMap<>();
-    private final java.util.concurrent.atomic.AtomicBoolean markerWarningLogged = new java.util.concurrent.atomic.AtomicBoolean();
 
     public CERegistry(CraftEngineBridgePlugin plugin) {
         this.plugin = plugin;
@@ -72,9 +70,8 @@ public final class CERegistry {
             }
         }
         this.cropDisplayItems = Map.copyOf(crops);
-        carrierTemplates.clear();
+        iconTemplates.clear();
         cropTemplates.clear();
-        markerWarningLogged.set(false);
         plugin.getLogger().info("Indexed " + map.size() + " CraftEngine blocks; resolved " + crops.size() + " crop display items from loot definitions.");
         onComplete.run();
     }
@@ -90,18 +87,18 @@ public final class CERegistry {
     }
 
     /**
-     * 构建隐形载体的物品：直接使用 CE 物品并保留 item_model，
-     * 缺失 item_name 时按配置表或 ID 美化补齐。
+     * 构建客户端目录图标：直接使用 CE 物品并保留模型，
+     * 缺失名称时按配置表或 ID 美化补齐。
      */
-    public synchronized @Nullable ItemStack buildCarrierItem(ImmutableBlockState state) {
+    public synchronized @Nullable ItemStack buildDisplayItem(ImmutableBlockState state) {
         if (state == null) return null;
         Key blockId = state.owner().value().id();
-        if (!isCrop(state)) return buildCarrierItem(blockId);
+        if (!isCrop(state)) return buildDisplayItem(blockId);
         ItemStack template = cropTemplates.get(blockId);
         if (template == null) {
             template = buildCropDisplayItem(blockId);
             // 作物不能回退到 settings.item 的种子，否则 Jade 会稳定地显示错误名称。
-            // 解析失败时暂不创建载体，下一次观察检查会重试；成熟产物加载完成后立即恢复。
+            // 解析失败时不返回错误的种子图标，后续重载时重新索引。
             if (template == null) return null;
             // 名字只描述作物本身，不用后缀伪装客户端原生作物状态栏。
             cropTemplates.put(blockId, template);
@@ -109,11 +106,11 @@ public final class CERegistry {
         return template.clone();
     }
 
-    public synchronized @Nullable ItemStack buildCarrierItem(Key blockId) {
+    public synchronized @Nullable ItemStack buildDisplayItem(Key blockId) {
         var block = CraftEngineBlocks.byId(blockId);
-        // ID 入口也走同一个作物模板，禁止在无状态路径先创建种子载体。
-        if (block != null && isCrop(block.defaultState())) return buildCarrierItem(block.defaultState());
-        ItemStack template = carrierTemplates.get(blockId);
+        // ID 入口也走同一个作物模板，禁止在无状态路径先创建种子图标。
+        if (block != null && isCrop(block.defaultState())) return buildDisplayItem(block.defaultState());
+        ItemStack template = iconTemplates.get(blockId);
         if (template != null) return template.clone();
         BukkitItemDefinition def = itemForBlock(blockId);
         if (def == null) return null;
@@ -121,16 +118,13 @@ public final class CERegistry {
         try {
             stack = def.buildBukkitItem();
         } catch (Throwable t) {
-            plugin.getLogger().warning("Failed to build CE item for carrier " + blockId.asString() + ": " + t);
+            plugin.getLogger().warning("Failed to build CE display item " + blockId.asString() + ": " + t);
             return null;
         }
         Key itemId = def.id();
-        if (!stack.hasData(DataComponentTypes.ITEM_NAME)) {
-            Component name = displayName(blockId, itemId);
-            if (name != null) stack.setData(DataComponentTypes.ITEM_NAME, name);
-        }
-        ItemStack prepared = addJadeMarker(stack, blockId);
-        carrierTemplates.put(blockId, prepared);
+        applyDisplayName(stack, blockId, itemId);
+        ItemStack prepared = stack;
+        iconTemplates.put(blockId, prepared);
         return prepared.clone();
     }
 
@@ -168,15 +162,12 @@ public final class CERegistry {
                 // CE 的增强原版作物会掉落 minecraft:*，并不一定另建 CE 物品定义。
                 // 只接受原版命名空间，避免把缺失的 custom:wheat 误认成原版小麦。
                 Material material = vanillaCropMaterial(Key.of(itemId));
-                return material == null ? null : addJadeMarker(new ItemStack(material), blockId);
+                return material == null ? null : new ItemStack(material);
             }
             ItemStack item = definition.buildBukkitItem();
-            if (item == null || item.isEmpty()) return null;
-            if (!item.hasData(DataComponentTypes.ITEM_NAME)) {
-                Component name = displayName(blockId, definition.id());
-                if (name != null) item.setData(DataComponentTypes.ITEM_NAME, name);
-            }
-            return addJadeMarker(item, blockId);
+            if (item == null || item.getType().isAir()) return null;
+            applyDisplayName(item, blockId, definition.id());
+            return item;
         } catch (RuntimeException failure) {
             // 重载期间可能暂时不可构建；不要把失败或种子写入模板缓存，下一次观察可以重试。
             return null;
@@ -195,43 +186,15 @@ public final class CERegistry {
                 && state.behavior().getClass().getSimpleName().toLowerCase(java.util.Locale.ROOT).contains("crop"));
     }
 
-    /** Paper does not expose CUSTOM_DATA in the API; use the server's NMS component API reflectively. */
-    private ItemStack addJadeMarker(ItemStack stack, Key blockId) {
-        try {
-            Class<?> craftItemStack = Class.forName("org.bukkit.craftbukkit.inventory.CraftItemStack");
-            Object nmsStack = craftItemStack.getMethod("asNMSCopy", ItemStack.class).invoke(null, stack);
-            Class<?> compoundTag = Class.forName("net.minecraft.nbt.CompoundTag");
-            Object tag = compoundTag.getConstructor().newInstance();
-            Object existing = nmsStack.getClass().getMethod("get", Class.forName("net.minecraft.core.component.DataComponentType"))
-                    .invoke(nmsStack, Class.forName("net.minecraft.core.component.DataComponents").getField("CUSTOM_DATA").get(null));
-            if (existing != null) {
-                Object copy = existing.getClass().getMethod("copyTag").invoke(existing);
-                tag = copy;
-            }
-            Object markerTag = compoundTag.getConstructor().newInstance();
-            compoundTag.getMethod("putString", String.class, String.class).invoke(markerTag, "id", blockId.asString());
-            compoundTag.getMethod("put", String.class, Class.forName("net.minecraft.nbt.Tag"))
-                    .invoke(tag, "$jade:stack", markerTag);
-            Class<?> customData = Class.forName("net.minecraft.world.item.component.CustomData");
-            Object component = customData.getMethod("of", compoundTag).invoke(null, tag);
-            Object type = Class.forName("net.minecraft.core.component.DataComponents").getField("CUSTOM_DATA").get(null);
-            nmsStack.getClass().getMethod("set", Class.forName("net.minecraft.core.component.DataComponentType"), Object.class)
-                    .invoke(nmsStack, type, component);
-            ItemStack converted = (ItemStack) craftItemStack.getMethod("asBukkitCopy", craftItemStack.getMethod("asNMSCopy", ItemStack.class).getReturnType())
-                    .invoke(null, nmsStack);
-            return converted;
-        } catch (ReflectiveOperationException | RuntimeException ex) {
-            // 不同服务端映射可能不支持反射；只记录一次，避免每个方块刷屏。
-            if (markerWarningLogged.compareAndSet(false, true)) {
-                plugin.getLogger().warning("Unable to add Jade custom_data marker; using normal CE carrier item: " + ex);
-            }
-            return stack;
+    private void applyDisplayName(ItemStack stack, Key blockId, Key itemId) {
+        // ItemMeta 的 Adventure 名称接口可用于早期 1.20，不链接新版 DataComponentTypes。
+        var meta = stack.getItemMeta();
+        if (meta == null || meta.hasDisplayName()) return;
+        Component name = displayName(blockId, itemId);
+        if (name != null) {
+            meta.displayName(name);
+            stack.setItemMeta(meta);
         }
-    }
-
-    /** 掉落物等纯物品场景的名字兜底。 */
-    public @Nullable Component displayNameForItem(Key itemId) {
-        return displayName(itemId, itemId);
     }
 
     /** 名字解析优先级：display-names 配置表 > ID 自动美化（auto-name）。 */

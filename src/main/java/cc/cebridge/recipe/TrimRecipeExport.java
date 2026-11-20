@@ -1,5 +1,7 @@
 package cc.cebridge.recipe;
 
+import cc.cebridge.compat.CraftEngineCompat;
+
 import com.google.gson.*;
 import java.nio.charset.StandardCharsets;
 import java.security.*;
@@ -46,9 +48,9 @@ final class TrimRecipeExport {
         if(ingredient.items().size()>256) throw new IllegalArgumentException("Trim ingredient exceeds 256 choices");
         var result=new ArrayList<Choice>();
         for(var key:ingredient.items()) {
-            var item=Item.byId(key.key(),ItemBuildContext.empty());
+            var item=CraftEngineCompat.buildItem(key.key(),ItemBuildContext.empty());
             if(item==null || item.isEmpty()) throw new IllegalArgumentException("Missing trim ingredient "+key);
-            item=ingredient.applyPredicateLooks(item).count(ingredient.count());
+            item=CraftEngineCompat.applyPredicateLooks(ingredient, item).count(ingredient.count());
             result.add(new Choice(key.toString(),item,encode.apply(item)));
         }
         return result;

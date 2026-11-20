@@ -18,13 +18,13 @@ final class ClientCatalogExport {
         PapersDelightExport.append(plugin,root);
         root.addProperty("bridgeProtocol",1);
         root.addProperty("targetHud",true);
-        root.addProperty("minecraft","26.1.2");
+        root.addProperty("minecraft",org.bukkit.Bukkit.getMinecraftVersion());
         root.addProperty("vanillaStates",CraftEngine.instance().blockManager().vanillaBlockStateCount());
         var blocks=new JsonArray();
         int coffeeGrowthStates=0;
         for(var block:CraftEngineBlocks.loadedBlocks().values()) {
-            ItemStack icon=plugin.registry().buildCarrierItem(block.defaultState());
-            String encodedIcon=icon!=null && !icon.isEmpty()?Base64.getEncoder().encodeToString(icon.serializeAsBytes()):null;
+            ItemStack icon=plugin.registry().buildDisplayItem(block.defaultState());
+            String encodedIcon=icon!=null && !icon.getType().isAir()?Base64.getEncoder().encodeToString(icon.serializeAsBytes()):null;
             var behavior = block.defaultState().behavior();
             var crop = behavior.getFirst(net.momirealms.craftengine.bukkit.block.behavior.CropBlockBehavior.class);
             var stem = behavior.getFirst(net.momirealms.craftengine.bukkit.block.behavior.StemBlockBehavior.class);

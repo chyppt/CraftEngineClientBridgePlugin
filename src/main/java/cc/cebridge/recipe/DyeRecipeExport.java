@@ -1,5 +1,7 @@
 package cc.cebridge.recipe;
 
+import cc.cebridge.compat.CraftEngineCompat;
+
 import com.google.gson.JsonArray;
 import com.google.gson.JsonObject;
 import net.momirealms.craftengine.bukkit.util.ItemStackUtils;
@@ -62,9 +64,9 @@ final class DyeRecipeExport {
     private static List<Choice> choices(Ingredient ingredient, Function<Item, String> encoder) {
         List<Choice> choices = new ArrayList<>();
         for (var key : ingredient.items()) {
-            Item item = Item.byId(key.key(), ItemBuildContext.empty());
+            Item item = CraftEngineCompat.buildItem(key.key(), ItemBuildContext.empty());
             if (item == null || item.isEmpty()) throw new IllegalArgumentException("Missing dye ingredient " + key);
-            item = ingredient.applyPredicateLooks(item).count(ingredient.count());
+            item = CraftEngineCompat.applyPredicateLooks(ingredient, item).count(ingredient.count());
             choices.add(new Choice(key.toString(), item, encoder.apply(item)));
         }
         return choices;

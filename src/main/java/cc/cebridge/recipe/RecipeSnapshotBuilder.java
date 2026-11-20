@@ -1,5 +1,7 @@
 package cc.cebridge.recipe;
 
+import cc.cebridge.compat.CraftEngineCompat;
+
 import com.google.gson.JsonArray;
 import com.google.gson.JsonObject;
 import net.momirealms.craftengine.bukkit.api.CraftEngineItems;
@@ -33,7 +35,7 @@ public final class RecipeSnapshotBuilder {
     public static Result buildForLeavesX() { return build(true); }
 
     static boolean includeRecipe(Key originalId, boolean leavesX) {
-        return !leavesX || !originalId.isMinecraftNamespace();
+        return !leavesX || !originalId.namespace().equals("minecraft");
     }
 
     private static Result build(boolean leavesX) {
@@ -172,11 +174,11 @@ public final class RecipeSnapshotBuilder {
             throw new IllegalArgumentException("Unsupported ingredient choice count");
         }
         JsonArray choices = new JsonArray();
-        slot.addProperty("exactInput", ingredient.hasCustomItem() || ingredient.predicate() != null || ingredient.count() != 1);
+        slot.addProperty("exactInput", ingredient.hasCustomItem() || CraftEngineCompat.hasPredicate(ingredient) || ingredient.count() != 1);
         for (UniqueKey key : ingredient.items()) {
-            net.momirealms.craftengine.core.item.Item built = net.momirealms.craftengine.core.item.Item.byId(key.key(), ItemBuildContext.empty());
+            net.momirealms.craftengine.core.item.Item built = CraftEngineCompat.buildItem(key.key(), ItemBuildContext.empty());
             if (built == null) throw new IllegalArgumentException("Missing ingredient " + key);
-            built = ingredient.applyPredicateLooks(built);
+            built = CraftEngineCompat.applyPredicateLooks(ingredient, built);
             ItemStack stack = ItemStackUtils.getBukkitStack(built);
             if (stack == null || stack.getType().isAir()) {
                 throw new IllegalArgumentException("Empty ingredient " + key);

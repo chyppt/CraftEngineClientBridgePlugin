@@ -148,7 +148,8 @@ final class PapersDelightExport {
 
     private String stack(String id, int count) throws ReflectiveOperationException {
         var stack = (ItemStack) createItem.invoke(null,id,count);
-        if (stack == null || stack.isEmpty()) throw new IllegalArgumentException("Missing PD item: " + id);
+        if (stack == null || stack.getAmount() <= 0 || stack.getType() == org.bukkit.Material.AIR)
+            throw new IllegalArgumentException("Missing PD item: " + id);
         return encode(stack);
     }
     /** 两个已核对的 PD 布局；不扫描 JAR，也不依赖混淆后易变化的管理器字段名。 */

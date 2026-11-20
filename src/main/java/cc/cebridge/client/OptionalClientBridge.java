@@ -48,10 +48,9 @@ public final class OptionalClientBridge implements Listener, PluginMessageListen
         if(channel.equals(BLOCK_QUERY)) { queryBlock(player,bytes);return; }
         if(closed || !channel.equals(HELLO) || bytes.length!=4 || (bytes[0]!=CatalogFrames.VERSION && bytes[0]!=2)) return;
         if(!plugin.getConfig().getBoolean("client-mod.enabled",true)) return;
-        if(!Bukkit.getMinecraftVersion().equals("26.1.2")) return;
         if(bytes[0]==2) {
             Session existing=sessions.get(player.getUniqueId());
-            if(existing!=null) { existing.ready=true;existing.targetHud=bytes[1]==1;if(existing.nativeBlocks() || existing.targetHud) plugin.carriers().releaseViewer(player.getUniqueId()); }
+            if(existing!=null) { existing.ready=true;existing.targetHud=bytes[1]==1; }
             return;
         }
         long now=System.nanoTime(); Session previous=sessions.get(player.getUniqueId());
@@ -73,25 +72,20 @@ public final class OptionalClientBridge implements Listener, PluginMessageListen
             long now=System.nanoTime();if(now-session.lastHud<100_000_000L) return;session.lastHud=now;
         }
         var input=java.nio.ByteBuffer.wrap(bytes);int serial=input.getInt();long position=input.getLong();
-        player.getScheduler().run(plugin,task->{
+        cc.cebridge.compat.Schedulers.entity(player).run(plugin,task->{
             if(sessions.get(player.getUniqueId())!=session || !player.isOnline()) return;
             int x=(int)(position>>38),y=(int)(position<<52>>52),z=(int)(position<<26>>38);
             var world=player.getWorld();var eye=player.getEyeLocation();
             double dx=eye.getX()-x-.5,dy=eye.getY()-y-.5,dz=eye.getZ()-z-.5;
             if(dx*dx+dy*dy+dz*dz>100 || y<world.getMinHeight() || y>=world.getMaxHeight() || !world.isChunkLoaded(x>>4,z>>4)) return;
-            // 仅确认当前准星的方块；像 CarrierManager 一样先确保整条射线在已加载且归当前区域的区块内。
-            var end=eye.clone().add(eye.getDirection().multiply(8));
-            for(int cx=Math.min(eye.getBlockX(),end.getBlockX())>>4;cx<=(Math.max(eye.getBlockX(),end.getBlockX())>>4);cx++)
-                for(int cz=Math.min(eye.getBlockZ(),end.getBlockZ())>>4;cz<=(Math.max(eye.getBlockZ(),end.getBlockZ())>>4);cz++)
-                    if(!world.isChunkLoaded(cx,cz) || !Bukkit.isOwnedByCurrentRegion(world,cx,cz)) return;
-            var target=player.getTargetBlockExact(8);
+            var target=cc.cebridge.compat.RegionAccess.targetBlock(player,8);
             if(target==null || target.getX()!=x || target.getY()!=y || target.getZ()!=z) return;
-            plugin.getServer().getRegionScheduler().run(plugin,world,x>>4,z>>4,region->{
+            cc.cebridge.compat.Schedulers.region(plugin,world,x>>4,z>>4,region->{
                 if(!world.isChunkLoaded(x>>4,z>>4)) return;
                 var state=net.momirealms.craftengine.bukkit.api.CraftEngineBlocks.getCustomBlockState(world.getBlockAt(x,y,z));
                 int stateId=state==null?-1:state.customBlockState().registryId();
                 byte[] reply=java.nio.ByteBuffer.allocate(16).putInt(serial).putLong(position).putInt(stateId).array();
-                player.getScheduler().run(plugin,send->{
+                cc.cebridge.compat.Schedulers.entity(player).run(plugin,send->{
                     if(player.isOnline() && player.getWorld().equals(world) && sessions.get(player.getUniqueId())==session)
                         player.sendPluginMessage(plugin,BLOCK_REPLY,reply);
                 },null);
@@ -103,7 +97,7 @@ public final class OptionalClientBridge implements Listener, PluginMessageListen
         if(closed) return;
         snapshot=null;
         if(sessions.isEmpty() || !queued.compareAndSet(false,true)) return;
-        Bukkit.getGlobalRegionScheduler().runDelayed(plugin,task->{
+        cc.cebridge.compat.Schedulers.global().runDelayed(plugin,task->{
             try {
                 JsonObject next=ClientCatalogExport.build(plugin); snapshot=next; long version=++generation;
                 for(var entry:sessions.entrySet()) {
@@ -116,10 +110,10 @@ public final class OptionalClientBridge implements Listener, PluginMessageListen
         },2L);
     }
     private void send(Player player,Session session,JsonObject base,long version) {
-        player.getScheduler().run(plugin,task->{
+        cc.cebridge.compat.Schedulers.entity(player).run(plugin,task->{
             if(!valid(player,session,version)) return;
             if(!exportSlots.tryAcquire()) {
-                player.getScheduler().runDelayed(plugin,retry->send(player,session,base,version),null,5L);
+                cc.cebridge.compat.Schedulers.entity(player).runDelayed(plugin,retry->send(player,session,base,version),null,5L);
                 return;
             }
             try {
@@ -129,10 +123,10 @@ public final class OptionalClientBridge implements Listener, PluginMessageListen
                 data.add("categories",CategoryExport.forPlayer(player,available));
                 byte[] json=data.toString().getBytes(StandardCharsets.UTF_8);
                 // 压缩只接收脱离 Bukkit 的字节数组；每人最多保留一代待发送任务。
-                Bukkit.getAsyncScheduler().runNow(plugin,async->{
+                cc.cebridge.compat.Schedulers.async().runNow(plugin,async->{
                     try {
                         var frames=CatalogFrames.split(version,json);
-                        player.getScheduler().run(plugin,send->sendFrames(player,session,version,frames,0),null);
+                        cc.cebridge.compat.Schedulers.entity(player).run(plugin,send->sendFrames(player,session,version,frames,0),null);
                     } catch(Exception failure) { plugin.getLogger().warning("目录压缩失败："+failure); }
                     finally { exportSlots.release(); }
                 });
@@ -143,7 +137,7 @@ public final class OptionalClientBridge implements Listener, PluginMessageListen
         if(!valid(player,session,version)) return;
         int end=Math.min(first+2,frames.size());
         for(int i=first;i<end;i++) player.sendPluginMessage(plugin,CATALOG,frames.get(i));
-        if(end<frames.size()) player.getScheduler().runDelayed(plugin,task->sendFrames(player,session,version,frames,end),null,1L);
+        if(end<frames.size()) cc.cebridge.compat.Schedulers.entity(player).runDelayed(plugin,task->sendFrames(player,session,version,frames,end),null,1L);
     }
     private boolean valid(Player player,Session session,long version) {
         return !closed && player.isOnline() && sessions.get(player.getUniqueId())==session && generation==version;

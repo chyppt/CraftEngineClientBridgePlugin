@@ -9,3 +9,4 @@ build/
 local.properties
 *.key
 *.pem
+verification/runtime/

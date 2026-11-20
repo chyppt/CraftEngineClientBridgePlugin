@@ -1,5 +1,7 @@
 package cc.cebridge.client;
 
+import cc.cebridge.compat.CraftEngineCompat;
+
 import com.google.gson.*;
 import java.util.*;
 import net.momirealms.craftengine.bukkit.api.BukkitAdaptor;
@@ -34,9 +36,8 @@ final class CategoryExport {
                 allowed,available::contains);
             if(members.isEmpty()) continue;
             var category=new JsonObject(); category.addProperty("id",root.id().asString());
-            category.add("title",AdventureHelper.componentToJsonElement(
-                    AdventureHelper.miniMessage().deserialize(root.displayName(),NetworkTextReplaceContext.of(user))));
-            Item icon=Item.byId(root.icon(),user);
+            category.add("title",CraftEngineCompat.categoryTitle(root.displayName(), user));
+            Item icon=CraftEngineCompat.buildItem(root.icon(),user);
             if(icon!=null && !icon.isEmpty()) category.addProperty("icon",Base64.getEncoder().encodeToString(
                     ItemStackUtils.getBukkitStack(icon.toClientSide(user)).serializeAsBytes()));
             var items=new JsonArray(); members.forEach(items::add); category.add("items",items); result.add(category);

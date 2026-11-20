@@ -29,7 +29,7 @@ class PapersDelightExportTest {
     public static final class Items {
         public static ItemStack create(String id,int count) {
             if(id.equals("test:missing")) return null;
-            var stack=mock(ItemStack.class);when(stack.isEmpty()).thenReturn(false);
+            var stack=mock(ItemStack.class);when(stack.getAmount()).thenReturn(count);when(stack.getType()).thenReturn(org.bukkit.Material.STONE);
             when(stack.serializeAsBytes()).thenReturn((id+"/"+count).getBytes(java.nio.charset.StandardCharsets.UTF_8));return stack;
         }
     }
