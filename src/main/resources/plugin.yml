@@ -1,0 +1,21 @@
+name: CraftEngineClientBridge
+version: '${version}'
+main: cc.cebridge.CraftEngineBridgePlugin
+api-version: '1.20'
+description: CraftEngine Jade carriers and LeavesX recipe reload integration.
+authors: [CraftEngineClientBridge]
+folia-supported: true
+depend: [CraftEngine]
+softdepend: [PapersDelight]
+
+commands:
+  cebridge:
+    description: CraftEngineClientBridge admin commands
+    usage: /cebridge <reload|info|status|recipes|rescan|purge|refresh>
+    permission: cebridge.admin
+    aliases: [ceb]
+
+permissions:
+  cebridge.admin:
+    description: Allows managing CraftEngineClientBridge
+    default: op
